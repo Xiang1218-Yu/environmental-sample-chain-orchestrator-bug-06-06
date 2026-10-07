@@ -189,6 +189,7 @@ export interface EvidencePackage extends Versioned {
   manifestHash?: string;
   fileKeys: string[];
   failureReason?: string;
+  includeRejected?: boolean;
 }
 
 export interface SyncEnvelope {
