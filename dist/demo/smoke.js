@@ -41,7 +41,16 @@ app.batches.start(batch.id, '2026-10-06T11:00:00.000Z');
 const run = app.results.registerRun({ tenantId, projectId, batchId: batch.id, externalRunId: 'RUN-001', rawFileHash: 'raw-hash-001', instrumentSoftwareVersion: 'instrument-7.2', startedAt: '2026-10-06T11:10:00.000Z' });
 app.results.completeRun(run.id, '2026-10-06T12:00:00.000Z', 'COMPLETED');
 const result = app.results.ingestRevision({ tenantId, projectId, batchId: batch.id, runId: run.id, ...(aliquots[0] ? { aliquotId: aliquots[0].id } : {}), analyte: 'lead', value: 0.12, unit: 'mg/L', detectionLimit: 0.01, qualityFlags: [], instrumentSoftwareVersion: 'instrument-7.2', contentHash: 'result-hash-001' });
+const blankRun = app.results.registerRun({ tenantId, projectId, batchId: batch.id, externalRunId: 'RUN-001-BLANK', rawFileHash: 'raw-hash-blank-001', instrumentSoftwareVersion: 'instrument-7.2', startedAt: '2026-10-06T11:15:00.000Z' });
+app.results.completeRun(blankRun.id, '2026-10-06T12:05:00.000Z', 'COMPLETED');
+const blank = app.results.ingestRevision({ tenantId, projectId, batchId: batch.id, runId: blankRun.id, controlKind: 'BLANK', analyte: 'lead', value: 0, unit: 'mg/L', detectionLimit: 0.01, qualityFlags: [], instrumentSoftwareVersion: 'instrument-7.2', contentHash: 'result-hash-blank-001' });
 app.quality.decide({ tenantId, projectId, batchId: batch.id, resultId: result.id, decision: 'APPROVED', reason: 'within protocol limits', ruleVersion: 'quality-v2', reviewerId: 'reviewer_01' });
+app.quality.decide({ tenantId, projectId, batchId: batch.id, resultId: blank.id, decision: 'APPROVED', reason: 'blank below detection limit', ruleVersion: 'quality-v2', reviewerId: 'reviewer_01' });
+app.quality.approveBatch(batch.id, 'reviewer_01');
+const evidence = await app.evidence.generate({ tenantId, projectId, requestKey: 'REQ-SMOKE-0001' });
+const duplicate = await app.evidence.generate({ tenantId, projectId, requestKey: 'REQ-SMOKE-0001' });
+const frozen = await app.evidence.freeze(evidence.id);
+const verification = await app.evidence.verify(evidence.id);
 console.log(JSON.stringify({
     projectId,
     sampleId: sealed.sample.id,
@@ -49,6 +58,16 @@ console.log(JSON.stringify({
     aliquotIds: aliquots.map((item) => item.id),
     batchId: batch.id,
     resultId: result.id,
+    evidence: {
+        id: evidence.id,
+        status: frozen.status,
+        snapshotVersion: evidence.snapshotVersion,
+        manifestHash: evidence.manifestHash,
+        fileKey: evidence.fileKeys[0],
+        sameLogicalPackage: duplicate.id === evidence.id && duplicate.manifestHash === evidence.manifestHash,
+        healthy: verification.healthy,
+        version: frozen.version,
+    },
     auditCount: app.store.audit.length,
     outboxCount: app.store.outbox.length,
 }, null, 2));

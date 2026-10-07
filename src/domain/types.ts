@@ -177,6 +177,18 @@ export interface QualityDecision extends Versioned {
   decidedAt: string;
 }
 
+export interface EvidenceSourceIds {
+  sampleIds: SampleId[];
+  containerIds: ContainerId[];
+  transferIds: string[];
+  receivingIds: string[];
+  aliquotIds: AliquotId[];
+  batchIds: BatchId[];
+  runIds: string[];
+  resultIds: ResultId[];
+  qualityDecisionIds: string[];
+}
+
 export interface EvidencePackage extends Versioned {
   id: string;
   tenantId: TenantId;
@@ -184,8 +196,11 @@ export interface EvidencePackage extends Versioned {
   requestKey: string;
   status: EvidenceStatus;
   snapshotVersion: number;
+  generatedAt?: string;
   frozenAt?: string;
-  sourceIds: { sampleIds: SampleId[]; containerIds: ContainerId[]; batchIds: BatchId[]; resultIds: ResultId[]; qualityDecisionIds: string[] };
+  includeRejected?: boolean;
+  attempts: number;
+  sourceIds: EvidenceSourceIds;
   manifestHash?: string;
   fileKeys: string[];
   failureReason?: string;
@@ -239,6 +254,8 @@ export interface OutboxMessage {
 export interface FileRecord {
   key: string;
   contentHash: string;
+  sizeBytes: number;
+  content?: string;
   createdAt: string;
   status: 'STAGED' | 'COMMITTED' | 'DELETED';
 }
